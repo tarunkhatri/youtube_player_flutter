@@ -34,6 +34,7 @@ class YoutubePlayerValue {
     this.webViewController,
     this.isDragging = false,
     this.metaData = const YoutubeMetaData(),
+    this.captionsAvailable = true,
   });
 
   /// Returns true when the player is ready to play videos.
@@ -86,6 +87,8 @@ class YoutubePlayerValue {
   /// Returns meta data of the currently loaded/cued video.
   final YoutubeMetaData metaData;
 
+  final bool captionsAvailable;
+
   /// Creates new [YoutubePlayerValue] with assigned parameters and overrides
   /// the old one.
   YoutubePlayerValue copyWith({
@@ -105,6 +108,7 @@ class YoutubePlayerValue {
     InAppWebViewController? webViewController,
     bool? isDragging,
     YoutubeMetaData? metaData,
+    bool? captionsAvailable,
   }) {
     return YoutubePlayerValue(
       isReady: isReady ?? this.isReady,
@@ -122,6 +126,7 @@ class YoutubePlayerValue {
       webViewController: webViewController ?? this.webViewController,
       isDragging: isDragging ?? this.isDragging,
       metaData: metaData ?? this.metaData,
+      captionsAvailable: captionsAvailable ?? this.captionsAvailable,
     );
   }
 
@@ -178,6 +183,27 @@ class YoutubePlayerController extends ValueNotifier<YoutubePlayerValue> {
     }
   }
 
+  void setPlaybackQuality(String quality) {
+    /*value.webViewController?.evaluateJavascript(
+      source: 'player.setPlaybackQuality("$quality");',
+    );*/
+    _callMethod('setPlaybackQuality("$quality")');
+    //value.webViewController?.evaluateJavascript(source: "setPlaybackQuality('hd1080')");
+  }
+
+  void getAvailableQualities(){
+    _callMethod('getAvailableQualities()');
+  }
+
+  /// Toggles captions on/off.
+  void toggleCaptions() => _callMethod('toggleCaptions()');
+
+  /// Shows captions.
+  void showCaptions() => _callMethod('showCaptions()');
+
+  /// Hides captions.
+  void hideCaptions() => _callMethod('hideCaptions()');
+
   /// Updates the old [YoutubePlayerValue] with new one provided.
   // ignore: use_setters_to_change_properties
   void updateValue(YoutubePlayerValue newValue) => value = newValue;
@@ -214,6 +240,10 @@ class YoutubePlayerController extends ValueNotifier<YoutubePlayerValue> {
     } else {
       _callMethod('cueById({$cueParams})');
     }
+  }
+
+  void checkCaptionAvailability(){
+    _callMethod('checkCaptionsAvailability()');
   }
 
   void _updateValues(String id) {

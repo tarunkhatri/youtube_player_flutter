@@ -78,6 +78,10 @@ class _RawYoutubePlayerState extends State<RawYoutubePlayer>
           mimeType: 'text/html',
         ),
         initialSettings: InAppWebViewSettings(
+          clearSessionCache: true,
+          clearCache: true,
+          cacheEnabled: false,
+          incognito: true,
           userAgent: userAgent,
           mediaPlaybackRequiresUserGesture: false,
           transparentBackground: true,
@@ -105,6 +109,10 @@ class _RawYoutubePlayerState extends State<RawYoutubePlayer>
                     controller!.value.copyWith(isReady: true),
                   );
                 }
+                //controller?.getAvailableQualities();
+                Future.delayed(Duration(milliseconds: 700),(){
+                  controller?.checkCaptionAvailability();
+                });
               },
             )
             ..addJavaScriptHandler(
@@ -167,6 +175,7 @@ class _RawYoutubePlayerState extends State<RawYoutubePlayer>
             ..addJavaScriptHandler(
               handlerName: 'PlaybackQualityChange',
               callback: (args) {
+                print('Video quality $args');
                 controller!.updateValue(
                   controller!.value
                       .copyWith(playbackQuality: args.first as String),
@@ -214,7 +223,29 @@ class _RawYoutubePlayerState extends State<RawYoutubePlayer>
                   ),
                 );
               },
-            );
+            )
+            ..addJavaScriptHandler(
+              handlerName: 'availableQualities',
+              callback: (args) {
+                List<dynamic> qualities = args[0]; // or just args if it's already a list
+                print("Available qualities: $qualities");
+
+                //_showQualityPopup(context,qualities.map((e) => e.toString()).toList());
+              },
+            )
+            ..addJavaScriptHandler(
+              handlerName: 'captionsAvailability',
+              callback: (args) {
+                bool captionsAvailable = args.first == true;
+                print("Captions available: $captionsAvailable");
+                controller!.updateValue(
+                  controller!.value.copyWith(
+                    captionsAvailable: captionsAvailable,
+                  ),
+                );
+              },
+            )
+          ;
         },
         onLoadStop: (_, __) {
           _onLoadStopCalled = true;
@@ -227,6 +258,30 @@ class _RawYoutubePlayerState extends State<RawYoutubePlayer>
       ),
     );
   }
+
+  void _showQualityPopup(BuildContext context, List<String> qualities) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Select Video Quality'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final quality in qualities)
+              ListTile(
+                title: Text(quality),
+                onTap: () {
+                  controller?.setPlaybackQuality(quality); // Custom method you’ll define
+                  Navigator.pop(context);
+                },
+              )
+          ],
+        ),
+      ),
+    );
+  }
+
+
 
   String get player => '''
     <!DOCTYPE html>
@@ -375,6 +430,82 @@ class _RawYoutubePlayerState extends State<RawYoutubePlayer>
                 document.getElementById("player").style.marginTop = margin;
                 return '';
             }
+            
+            function toggleCaptions() {
+                var track = player.getOption('captions', 'track');
+                if (track && track.languageCode) {
+                    player.unloadModule('captions');
+                } else {
+                    player.loadModule('captions');
+                    player.setOption('captions', 'track', {});
+                }
+                return '';
+            }
+            
+            function showCaptions() {
+                player.loadModule('captions');
+                player.setOption('captions', 'track', {
+                    languageCode: 'en' // ensure this is defined
+                });
+                return '';
+            }
+            function hideCaptions() {
+                player.unloadModule('captions');
+                return '';
+            }
+            
+           function checkCaptionsAvailability() {
+            try {
+              player.loadModule('captions'); // Make sure captions module is loaded
+
+              setTimeout(function () {
+                var track = player.getOption('captions', 'track');
+                var available = track && track.languageCode;
+
+                if (window.flutter_inappwebview) {
+                  window.flutter_inappwebview.callHandler('captionsAvailability', !!available);
+                }
+              }, 500); // Delay gives YouTube time to initialize captions
+            } catch (e) {
+               console.log('Error checking captions availability:', e);
+               if (window.flutter_inappwebview) {
+                 window.flutter_inappwebview.callHandler('captionsAvailability', false);
+               }
+            }
+           }
+
+            
+            function setPlaybackQuality(quality) {
+             console.log("setQuality called with:", quality);
+
+              if (player && typeof player.setPlaybackQuality === "function") {
+               try {
+                const available = player.getAvailableQualityLevels();
+                console.log("Available qualities:", available);
+
+                if (available.includes(quality)) {
+                  player.setPlaybackQuality(quality);
+                  console.log("Quality set to:", quality);
+                } else {
+                  console.log("Requested quality not available:", quality);
+                }
+              } catch (e) {
+                console.log("Error setting quality:", e.message);
+              }
+            } else {
+              console.log("Player not ready or setPlaybackQuality not available");
+            }
+           }
+            
+            function getAvailableQualities() {
+                if (player && player.getAvailableQualityLevels) {
+                  const qualities = player.getAvailableQualityLevels(); // e.g., ["hd1080", "hd720", "large", "medium", "small"]
+                if (window.flutter_inappwebview) {
+                  window.flutter_inappwebview.callHandler('availableQualities', qualities);
+                }
+              }
+            }
+
         </script>
     </body>
     </html>

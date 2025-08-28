@@ -9,6 +9,8 @@ import '../utils/errors.dart';
 import '../utils/youtube_meta_data.dart';
 import '../utils/youtube_player_controller.dart';
 import '../utils/youtube_player_flags.dart';
+import '../widgets/caption_widget.dart';
+import '../widgets/forward_reverse_widget.dart';
 import '../widgets/widgets.dart';
 import 'raw_youtube_player.dart';
 
@@ -337,6 +339,9 @@ class _YoutubePlayerState extends State<YoutubePlayer> {
               disableDragSeek: controller.flags.disableDragSeek,
               timeOut: widget.controlsTimeOut,
             ),
+            ForwardRewindControls(
+              controlsTimeOut: widget.controlsTimeOut,
+            ),
             Positioned(
               bottom: 0,
               left: 0,
@@ -395,12 +400,19 @@ class _YoutubePlayerState extends State<YoutubePlayer> {
             ),
           ],
           if (!controller.flags.hideControls)
-            const Center(child: PlayPauseButton()),
+             Center(child: PlayPauseButton()),
           if (controller.value.hasError) errorWidget,
+          if(controller.value.captionsAvailable)
+          CaptionControls(
+            iconColor: Colors.white,
+            iconSize: 22.0,
+          ),
         ],
       ),
     );
   }
+
+
 
   Widget get _thumbnail => Image.network(
         YoutubePlayer.getThumbnail(
