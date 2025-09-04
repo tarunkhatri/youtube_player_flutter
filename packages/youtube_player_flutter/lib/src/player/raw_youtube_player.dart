@@ -245,6 +245,19 @@ class _RawYoutubePlayerState extends State<RawYoutubePlayer>
                 );
               },
             )
+          ..addJavaScriptHandler(
+            handlerName: 'onSeekComplete',
+            callback: (_) {
+              print('onSeekComplete');
+              Future.delayed(Duration(milliseconds: 500),(){
+                if (!controller!.isCaptionsEnabled.value) {
+                  controller?.hideCaptions();
+                } else {
+                  controller?.showCaptions();
+                }
+              });
+            },
+          )
           ;
         },
         onLoadStop: (_, __) {
@@ -413,6 +426,7 @@ class _RawYoutubePlayerState extends State<RawYoutubePlayer>
 
             function seekTo(position, seekAhead) {
                 player.seekTo(position, seekAhead);
+                window.flutter_inappwebview.callHandler('onSeekComplete');
                 return '';
             }
 

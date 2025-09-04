@@ -24,7 +24,6 @@ class CaptionControls extends StatefulWidget {
 class _CaptionControlsState extends State<CaptionControls> {
   late YoutubePlayerController _controller;
 
-  final ValueNotifier<bool> _isCaptionsEnabled = ValueNotifier(false);
   final ValueNotifier<bool> _isVisible = ValueNotifier(true);
 
   @override
@@ -37,7 +36,7 @@ class _CaptionControlsState extends State<CaptionControls> {
     );
     _controller = controller ?? widget.controller!;
 
-    _isCaptionsEnabled.value = _controller.flags.enableCaption;
+    _controller.isCaptionsEnabled.value = _controller.flags.enableCaption;
     _isVisible.value = _controller.value.isControlsVisible;
 
     _controller.addListener(_onControllerChanged);
@@ -50,8 +49,8 @@ class _CaptionControlsState extends State<CaptionControls> {
   }
 
   void _toggleCaptions() {
-    final newState = !_isCaptionsEnabled.value;
-    _isCaptionsEnabled.value = newState;
+    final newState = !_controller.isCaptionsEnabled.value;
+    _controller.isCaptionsEnabled.value = newState;
 
     if (newState) {
       _controller.showCaptions();
@@ -65,7 +64,7 @@ class _CaptionControlsState extends State<CaptionControls> {
   @override
   void dispose() {
     _controller.removeListener(_onControllerChanged);
-    _isCaptionsEnabled.dispose();
+    _controller.isCaptionsEnabled.dispose();
     _isVisible.dispose();
     super.dispose();
   }
@@ -90,7 +89,7 @@ class _CaptionControlsState extends State<CaptionControls> {
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: ValueListenableBuilder<bool>(
-                  valueListenable: _isCaptionsEnabled,
+                  valueListenable: _controller.isCaptionsEnabled,
                   builder: (context, isEnabled, _) {
                     return Icon(
                       isEnabled ? Icons.closed_caption : Icons.closed_caption_off,

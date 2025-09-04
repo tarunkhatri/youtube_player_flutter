@@ -162,6 +162,8 @@ class YoutubePlayerController extends ValueNotifier<YoutubePlayerValue> {
   /// Composes all the flags required to control the player.
   final YoutubePlayerFlags flags;
 
+  ValueNotifier<bool> isCaptionsEnabled = ValueNotifier(false);
+
   /// Creates [YoutubePlayerController].
   YoutubePlayerController({
     required this.initialVideoId,
