@@ -194,6 +194,9 @@ class _YoutubePlayerState extends State<YoutubePlayer> {
 
   late double _aspectRatio;
   bool _initialLoad = true;
+  double _scale = 1.0;
+  double _baseScale = 1.0;
+
 
   @override
   void initState() {
@@ -291,123 +294,147 @@ class _YoutubePlayerState extends State<YoutubePlayer> {
   }
 
   Widget _buildPlayer({required Widget errorWidget}) {
-    return AspectRatio(
-      aspectRatio: _aspectRatio,
-      child: Stack(
-        fit: StackFit.expand,
-        clipBehavior: Clip.none,
-        children: [
-          RawYoutubePlayer(
-            key: widget.key,
-            onEnded: (YoutubeMetaData metaData) {
-              if (controller.flags.loop) {
-                controller.load(controller.metadata.videoId,
-                    startAt: controller.flags.startAt,
-                    endAt: controller.flags.endAt);
-              }
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent, // Ensure it captures gestures even over transparent areas
+      onScaleStart: (details) {
+        _baseScale = _scale;
+      },
+      onScaleUpdate: (details) {
+        setState(() {
+          _scale = (_baseScale * details.scale).clamp(1.0, 2.0);
+        });
+      },
+      onScaleEnd: (details) {
+        // Optional: Snap back to normal or max scale
+        setState(() {
+          if (_scale < 1.05) {
+            _scale = 1.0;
+          } else if (_scale > 1.95) {
+            _scale = 2.0;
+          }
+        });
+      },
+      child: AspectRatio(
+        aspectRatio: _aspectRatio,
+        child: Stack(
+          fit: StackFit.expand,
+          clipBehavior: Clip.none,
+          children: [
+            Transform.scale(
+              scale: _scale,
+              child: RawYoutubePlayer(
+                key: widget.key,
+                onEnded: (YoutubeMetaData metaData) {
+                  if (controller.flags.loop) {
+                    controller.load(controller.metadata.videoId,
+                        startAt: controller.flags.startAt,
+                        endAt: controller.flags.endAt);
+                  }
 
-              widget.onEnded?.call(metaData);
-            },
-          ),
-          if (!controller.flags.hideThumbnail)
-            AnimatedOpacity(
-              opacity: controller.value.isPlaying ? 0 : 1,
-              duration: const Duration(milliseconds: 300),
-              child: widget.thumbnail ?? _thumbnail,
+                  widget.onEnded?.call(metaData);
+                },
+              ),
             ),
-          if (!controller.value.isFullScreen &&
-              !controller.flags.hideControls &&
-              controller.value.position > const Duration(milliseconds: 100) &&
-              !controller.value.isControlsVisible &&
-              widget.showVideoProgressIndicator &&
-              !controller.flags.isLive)
-            Positioned(
-              bottom: -7.0,
-              left: -7.0,
-              right: -7.0,
-              child: IgnorePointer(
-                ignoring: true,
-                child: ProgressBar(
-                  colors: widget.progressColors.copyWith(
-                    handleColor: Colors.transparent,
+            if (!controller.flags.hideThumbnail)
+              AnimatedOpacity(
+                opacity: controller.value.isPlaying ? 0 : 1,
+                duration: const Duration(milliseconds: 300),
+                child: widget.thumbnail ?? _thumbnail,
+              ),
+            if (!controller.value.isFullScreen &&
+                !controller.flags.hideControls &&
+                controller.value.position > const Duration(milliseconds: 100) &&
+                !controller.value.isControlsVisible &&
+                widget.showVideoProgressIndicator &&
+                !controller.flags.isLive)
+              Positioned(
+                bottom: -7.0,
+                left: -7.0,
+                right: -7.0,
+                child: IgnorePointer(
+                  ignoring: true,
+                  child: ProgressBar(
+                    colors: widget.progressColors.copyWith(
+                      handleColor: Colors.transparent,
+                    ),
                   ),
                 ),
               ),
-            ),
-          if (!controller.flags.hideControls) ...[
-            TouchShutter(
-              disableDragSeek: controller.flags.disableDragSeek,
-              timeOut: widget.controlsTimeOut,
-            ),
-            ForwardRewindControls(
-              controlsTimeOut: widget.controlsTimeOut,
-            ),
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: AnimatedOpacity(
-                opacity: !controller.flags.hideControls &&
-                        controller.value.isControlsVisible
-                    ? 1
-                    : 0,
-                duration: const Duration(milliseconds: 300),
-                child: controller.flags.isLive
-                    ? LiveBottomBar(
-                        liveUIColor: widget.liveUIColor,
-                        showLiveFullscreenButton:
-                            widget.controller.flags.showLiveFullscreenButton,
-                      )
-                    : Padding(
-                        padding: widget.bottomActions == null
-                            ? const EdgeInsets.all(0.0)
-                            : widget.actionsPadding,
-                        child: Row(
-                          children: widget.bottomActions ??
-                              [
-                                const SizedBox(width: 14.0),
-                                const CurrentPosition(),
-                                const SizedBox(width: 8.0),
-                                ProgressBar(
-                                  isExpanded: true,
-                                  colors: widget.progressColors,
-                                ),
-                                const RemainingDuration(),
-                                const PlaybackSpeedButton(),
-                                const FullScreenButton(),
-                              ],
+            if (!controller.flags.hideControls) ...[
+              TouchShutter(
+                disableDragSeek: controller.flags.disableDragSeek,
+                timeOut: widget.controlsTimeOut,
+              ),
+              ForwardRewindControls(
+                controlsTimeOut: widget.controlsTimeOut,
+              ),
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: AnimatedOpacity(
+                  opacity: !controller.flags.hideControls &&
+                          controller.value.isControlsVisible
+                      ? 1
+                      : 0,
+                  duration: const Duration(milliseconds: 300),
+                  child: controller.flags.isLive
+                      ? LiveBottomBar(
+                          liveUIColor: widget.liveUIColor,
+                          showLiveFullscreenButton:
+                              widget.controller.flags.showLiveFullscreenButton,
+                        )
+                      : Padding(
+                          padding: widget.bottomActions == null
+                              ? const EdgeInsets.all(0.0)
+                              : widget.actionsPadding,
+                          child: Row(
+                            children: widget.bottomActions ??
+                                [
+                                  const SizedBox(width: 14.0),
+                                  const CurrentPosition(),
+                                  const SizedBox(width: 8.0),
+                                  ProgressBar(
+                                    isExpanded: true,
+                                    colors: widget.progressColors,
+                                  ),
+                                  const RemainingDuration(),
+                                  const PlaybackSpeedButton(),
+                                  const FullScreenButton(),
+                                ],
+                          ),
                         ),
-                      ),
+                ),
               ),
-            ),
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: AnimatedOpacity(
-                opacity: !controller.flags.hideControls &&
-                        controller.value.isControlsVisible
-                    ? 1
-                    : 0,
-                duration: const Duration(milliseconds: 300),
-                child: Padding(
-                  padding: widget.actionsPadding,
-                  child: Row(
-                    children: widget.topActions ?? [Container()],
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: AnimatedOpacity(
+                  opacity: !controller.flags.hideControls &&
+                          controller.value.isControlsVisible
+                      ? 1
+                      : 0,
+                  duration: const Duration(milliseconds: 300),
+                  child: Padding(
+                    padding: widget.actionsPadding,
+                    child: Row(
+                      children: widget.topActions ?? [Container()],
+                    ),
                   ),
                 ),
               ),
+            ],
+            if (!controller.flags.hideControls)
+               Center(child: PlayPauseButton()),
+            if (controller.value.hasError) errorWidget,
+            if(controller.value.captionsAvailable)
+            CaptionControls(
+              iconColor: Colors.white,
+              iconSize: 22.0,
             ),
           ],
-          if (!controller.flags.hideControls)
-             Center(child: PlayPauseButton()),
-          if (controller.value.hasError) errorWidget,
-          if(controller.value.captionsAvailable)
-          CaptionControls(
-            iconColor: Colors.white,
-            iconSize: 22.0,
-          ),
-        ],
+        ),
       ),
     );
   }
